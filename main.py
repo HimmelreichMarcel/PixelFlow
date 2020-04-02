@@ -17,6 +17,14 @@ from keras.layers import BatchNormalization
 from keras.layers import LeakyReLU
 from matplotlib import pyplot
 
+from os import listdir
+from numpy import asarray
+from numpy import vstack
+from keras.preprocessing.image import img_to_array
+from keras.preprocessing.image import load_img
+from numpy import savez_compressed
+
+
 # define the discriminator model
 def define_discriminator(image_shape):
 	# weight initialization
@@ -146,6 +154,21 @@ def load_real_samples(filename):
 	X2 = (X2 - 127.5) / 127.5
 	return [X1, X2]
 
+def load_images(path, size=(256,512)):
+	src_list, tar_list = list(), list()
+	# enumerate filenames in directory, assume all are images
+	for filename in listdir(path):
+		# load and resize the image
+		pixels = load_img(path + filename, target_size=size)
+		# convert to numpy array
+		pixels = img_to_array(pixels)
+		# split into satellite and map
+		sat_img, map_img = pixels[:, :256], pixels[:, 256:]
+		src_list.append(sat_img)
+		tar_list.append(map_img)
+		print("Add image: " + filename)
+	return [asarray(src_list), asarray(tar_list)]
+
 # select a batch of random samples, returns images and target
 def generate_real_samples(dataset, n_samples, patch_shape):
 	# unpack dataset
@@ -168,6 +191,7 @@ def generate_fake_samples(g_model, samples, patch_shape):
 
 # generate samples and save as a plot and save the model
 def summarize_performance(step, g_model, dataset, n_samples=3):
+	print("Summarize Performance")
 	# select a sample of input images
 	[X_realA, X_realB], _ = generate_real_samples(dataset, n_samples, 1)
 	# generate a batch of fake samples
@@ -229,14 +253,18 @@ def train(d_model, g_model, gan_model, dataset, n_epochs=100, n_batch=1):
 			summarize_performance(i, g_model, dataset)
 
 # load image data
-dataset = load_real_samples('maps_256.npz')
+dataset = load_images('./Samples/train/')
 print('Loaded', dataset[0].shape, dataset[1].shape)
 # define input shape based on the loaded dataset
 image_shape = dataset[0].shape[1:]
 # define the models
+print("Define Discriminator")
 d_model = define_discriminator(image_shape)
+print("Define Generator")
 g_model = define_generator(image_shape)
 # define the composite model
+print("Define GAN")
 gan_model = define_gan(g_model, d_model, image_shape)
 # train model
+print("Train CNN")
 train(d_model, g_model, gan_model, dataset)
